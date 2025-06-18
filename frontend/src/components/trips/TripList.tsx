@@ -30,7 +30,7 @@ export default function TripList({ trips, isLoading, showJoinButton = false }: T
     return <Loading />
   }
 
-  if (trips.length === 0) {
+  if (!trips) {
     return (
       <div className="text-center py-12">
         <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
