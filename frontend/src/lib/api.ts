@@ -1,5 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { User } from '@/types/user';
+import { TOKEN_KEY } from '@/lib/auth';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -13,7 +14,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,7 +31,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('token');
+      localStorage.removeItem(TOKEN_KEY);
       window.location.href = '/login';
     }
     return Promise.reject(error);

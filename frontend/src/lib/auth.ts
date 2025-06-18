@@ -1,6 +1,6 @@
 import { User } from '@/types/user'
 
-export const TOKEN_KEY = 'rideshare_token'
+export const TOKEN_KEY = 'skfnlsfnlvksfnsfnlfsknslfknlfksnfslknfslvknspfa[ir[ijifnfpnf;vnlsfnkbnklfbn;sfnf;amokknfnflbnlflnbfbnslncnlnfnflnfnanlfsnflnlkfbnljbfnlkfnlnclnlvnlblnlfnnlslkflksldjfblbjlbjlbjgdlb;;dgsbjbsjbs;j'
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null

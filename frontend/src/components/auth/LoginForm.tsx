@@ -26,19 +26,38 @@ export default function LoginForm() {
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-
-    try {
-      await login(formData.email, formData.password)
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
-    } finally {
-      setIsLoading(false)
-    }
+  console.log('=== LOGIN FORM SUBMISSION START ===');
+  e.preventDefault();
+  
+  // Validate form data
+  if (!formData.email || !formData.password) {
+    setError('Please fill in all fields');
+    return;
   }
+  
+  setIsLoading(true);
+  setError('');
+  console.log('Form data:', formData);
+
+  try {
+    console.log('Calling login function...');
+    await login(formData.email, formData.password);
+    console.log('Login successful, navigating to dashboard...');
+    
+    // Force navigation with a small delay to ensure state updates
+    setTimeout(() => {
+    router.replace('/dashboard');
+  }, 200);
+    
+  } catch (err: any) {
+    console.error('Login form error:', err);
+    setError(err.message || err.toString() || 'Login failed');
+  } finally {
+    setIsLoading(false);
+    console.log('=== LOGIN FORM SUBMISSION END ===');
+  }
+};
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({

@@ -4,6 +4,8 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { login as apiLogin, register as apiRegister, getCurrentUser } from '@/lib/api';
 import { User } from '@/types/user';
+import { TOKEN_KEY } from '@/lib/auth';
+
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +13,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+   setUser: (user: User | null) => void;
 }
 
 interface RegisterData {
@@ -33,38 +36,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
         const userData = await getCurrentUser();
         setUser(userData);
       }
     } catch (error) {
-      localStorage.removeItem('token');
+      localStorage.removeItem(TOKEN_KEY);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  // const login = async (email: string, password: string) => {
+  //   const response = await apiLogin(email, password);
+  //   localStorage.setItem('token', response.token);
+  //   setUser(response.user);
+  // };
+  const login = async (email: string, password: string): Promise<void> => {
+  console.log('useAuth login called with:', email); // Debug log
+  
+  try {
     const response = await apiLogin(email, password);
-    localStorage.setItem('token', response.token);
+    console.log('API login response:', response); // Debug log
+    
+    if (!response.token || !response.user) {
+      throw new Error('Invalid response from server');
+    }
+    
+    localStorage.setItem(TOKEN_KEY, response.token);
+    console.log('Token stored:', response.token); // Debug log
+    
     setUser(response.user);
-  };
+    console.log('User state updated:', response.user); // Debug log
+    
+    // ✅ Don't return the response - function should return void
+  } catch (error) {
+    console.error('useAuth login error:', error);
+    throw error; // Re-throw the error so LoginForm can handle it
+  }
+};
+
 
   const register = async (userData: RegisterData) => {
     const response = await apiRegister(userData);
-    localStorage.setItem('token', response.token);
+    localStorage.setItem(TOKEN_KEY, response.token);
     setUser(response.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading,setUser }}>
       {children}
     </AuthContext.Provider>
   );
