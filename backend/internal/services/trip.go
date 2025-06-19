@@ -44,10 +44,12 @@ func (s *TripService) CreateTrip(trip *models.Trip) error {
 
 func (s *TripService) GetUserTrips(userID int) ([]models.Trip, error) {
     query := `
-        SELECT t.id, t.driver_id, t.from_location, t.to_location, t.departure_time,
-               t.max_passengers, t.current_passengers, t.price_per_person, t.description,
-               t.status, t.created_at, t.updated_at,
-               u.id, u.name, u.email, u.phone
+        SELECT 
+            t.id, t.driver_id, t.from_location, t.to_location, 
+            t.departure_time, t.max_passengers, t.current_passengers,
+            t.price_per_person, t.description, t.status,
+            t.created_at, t.updated_at,
+            u.name, u.email, u.phone
         FROM trips t
         LEFT JOIN users u ON t.driver_id = u.id
         WHERE t.driver_id = $1
@@ -56,6 +58,7 @@ func (s *TripService) GetUserTrips(userID int) ([]models.Trip, error) {
     
     rows, err := s.db.Query(query, userID)
     if err != nil {
+        fmt.Printf("Database query error: %v", err)
         return nil, fmt.Errorf("failed to get user trips: %w", err)
     }
     defer rows.Close()
@@ -63,7 +66,7 @@ func (s *TripService) GetUserTrips(userID int) ([]models.Trip, error) {
     var trips []models.Trip
     for rows.Next() {
         var trip models.Trip
-        var driver models.User
+        var driverName, driverEmail, driverPhone sql.NullString
         
         err := rows.Scan(
             &trip.ID,
@@ -78,16 +81,25 @@ func (s *TripService) GetUserTrips(userID int) ([]models.Trip, error) {
             &trip.Status,
             &trip.CreatedAt,
             &trip.UpdatedAt,
-            &driver.ID,
-            &driver.Name,
-            &driver.Email,
-            &driver.Phone,
+            &driverName,
+            &driverEmail,
+            &driverPhone,
         )
         if err != nil {
+            fmt.Printf("Row scan error: %v", err)
             return nil, fmt.Errorf("failed to scan trip: %w", err)
         }
         
-        trip.Driver = &driver
+        // Create driver info if available
+        if driverName.Valid {
+            trip.Driver = &models.User{
+                ID:    trip.DriverID,
+                Name:  driverName.String,
+                Email: driverEmail.String,
+                Phone: driverPhone.String,
+            }
+        }
+        
         trips = append(trips, trip)
     }
     

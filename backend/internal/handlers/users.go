@@ -14,6 +14,7 @@ type UserHandler struct {
     db          *sql.DB
     authService *services.AuthService
     validator   *validator.Validate
+    
 }
 
 func NewUserHandler(db *sql.DB) *UserHandler {

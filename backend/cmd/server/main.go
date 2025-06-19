@@ -5,7 +5,7 @@ import (
     "log"
     "rideshare-backend/internal/config"
     "rideshare-backend/internal/handlers"
-    
+
     "github.com/gin-gonic/gin"
     "github.com/rs/cors"
     _ "github.com/lib/pq"

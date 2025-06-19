@@ -5,6 +5,7 @@ import (
     "fmt"
     "math"
     "rideshare-backend/internal/models"
+    "sort"
     "strings"
 )
 
@@ -16,7 +17,12 @@ func NewMatchingService(db *sql.DB) *MatchingService {
     return &MatchingService{db: db}
 }
 
+
+// Enhanced FindMatchingTrips with better filtering and scoring
 func (s *MatchingService) FindMatchingTrips(userID int, from, to string, maxDistance float64) ([]models.TripMatch, error) {
+    // Set minimum similarity threshold to filter out irrelevant results
+    minSimilarity := 0.3 // 30% minimum similarity
+    
     query := `
         SELECT t.id, t.driver_id, t.from_location, t.to_location, t.departure_time,
                t.max_passengers, t.current_passengers, t.price_per_person, t.description,
@@ -26,6 +32,7 @@ func (s *MatchingService) FindMatchingTrips(userID int, from, to string, maxDist
         AND t.driver_id != $1
         AND t.current_passengers < t.max_passengers
         AND t.departure_time > NOW()
+        ORDER BY t.departure_time ASC
     `
     
     rows, err := s.db.Query(query, userID)
@@ -34,10 +41,11 @@ func (s *MatchingService) FindMatchingTrips(userID int, from, to string, maxDist
     }
     defer rows.Close()
     
-    var matches []models.TripMatch
+    var allMatches []models.TripMatch
     
     for rows.Next() {
         var trip models.Trip
+        
         err := rows.Scan(
             &trip.ID,
             &trip.DriverID,
@@ -56,69 +64,160 @@ func (s *MatchingService) FindMatchingTrips(userID int, from, to string, maxDist
             continue
         }
         
-        // Calculate similarity score
-        similarity := s.calculateSimilarity(from, to, trip.FromLocation, trip.ToLocation)
+        // Calculate comprehensive similarity and distance scores
+        similarity := s.calculateEnhancedSimilarity(from, to, trip.FromLocation, trip.ToLocation)
         distance := s.calculateDistance(from, to, trip.FromLocation, trip.ToLocation)
         
-        if distance <= maxDistance {
-            matches = append(matches, models.TripMatch{
+        // Include all trips that meet minimum criteria
+        if similarity >= minSimilarity && distance <= maxDistance {
+            match := models.TripMatch{
                 TripID:      trip.ID,
                 PassengerID: userID,
                 Similarity:  similarity,
                 Distance:    distance,
-            })
+            }
+            
+            allMatches = append(allMatches, match)
         }
     }
     
-    return matches, nil
-}
-
-func (s *MatchingService) calculateSimilarity(from1, to1, from2, to2 string) float64 {
-    fromSimilarity := s.stringSimilarity(strings.ToLower(from1), strings.ToLower(from2))
-    toSimilarity := s.stringSimilarity(strings.ToLower(to1), strings.ToLower(to2))
+    // Sort by similarity (highest first), then by distance (lowest first)
+    sort.Slice(allMatches, func(i, j int) bool {
+        if math.Abs(allMatches[i].Similarity - allMatches[j].Similarity) < 0.01 {
+            // If similarity is very close, prefer lower distance
+            return allMatches[i].Distance < allMatches[j].Distance
+        }
+        return allMatches[i].Similarity > allMatches[j].Similarity
+    })
     
-    return (fromSimilarity + toSimilarity) / 2.0
+    return allMatches, nil
 }
 
-func (s *MatchingService) stringSimilarity(s1, s2 string) float64 {
+// Enhanced similarity calculation with multiple factors
+func (s *MatchingService) calculateEnhancedSimilarity(from1, to1, from2, to2 string) float64 {
+    // Normalize strings
+    from1, to1 = strings.ToLower(strings.TrimSpace(from1)), strings.ToLower(strings.TrimSpace(to1))
+    from2, to2 = strings.ToLower(strings.TrimSpace(from2)), strings.ToLower(strings.TrimSpace(to2))
+    
+    // Calculate individual similarities
+    fromSimilarity := s.advancedStringSimilarity(from1, from2)
+    toSimilarity := s.advancedStringSimilarity(to1, to2)
+    
+    // Weight the similarities (destination is slightly more important)
+    weightedSimilarity := (fromSimilarity * 0.45) + (toSimilarity * 0.55)
+    
+    return weightedSimilarity
+}
+
+// Advanced string similarity with multiple matching techniques
+func (s *MatchingService) advancedStringSimilarity(s1, s2 string) float64 {
     if s1 == s2 {
         return 1.0
     }
     
-    // Simple substring matching
-    if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
-        return 0.8
+    if s1 == "" || s2 == "" {
+        return 0.0
     }
     
-    // Check for common words
+    // Multiple similarity checks
+    scores := []float64{
+        s.exactMatchScore(s1, s2),
+        s.substringMatchScore(s1, s2),
+        s.wordMatchScore(s1, s2),
+        s.levenshteinSimilarity(s1, s2),
+        s.jaroWinklerSimilarity(s1, s2),
+    }
+    
+    // Return the highest score from all methods
+    maxScore := 0.0
+    for _, score := range scores {
+        if score > maxScore {
+            maxScore = score
+        }
+    }
+    
+    return maxScore
+}
+
+func (s *MatchingService) exactMatchScore(s1, s2 string) float64 {
+    if s1 == s2 {
+        return 1.0
+    }
+    return 0.0
+}
+
+func (s *MatchingService) substringMatchScore(s1, s2 string) float64 {
+    if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
+        shorter := math.Min(float64(len(s1)), float64(len(s2)))
+        longer := math.Max(float64(len(s1)), float64(len(s2)))
+        return shorter / longer * 0.9 // 90% for substring matches
+    }
+    return 0.0
+}
+
+func (s *MatchingService) wordMatchScore(s1, s2 string) float64 {
     words1 := strings.Fields(s1)
     words2 := strings.Fields(s2)
     
+    if len(words1) == 0 || len(words2) == 0 {
+        return 0.0
+    }
+    
     commonWords := 0
+    totalWords := len(words1) + len(words2)
+    
     for _, w1 := range words1 {
         for _, w2 := range words2 {
-            if w1 == w2 {
+            if w1 == w2 || strings.Contains(w1, w2) || strings.Contains(w2, w1) {
                 commonWords++
                 break
             }
         }
     }
     
-    if len(words1) == 0 || len(words2) == 0 {
+    return float64(commonWords*2) / float64(totalWords)
+}
+
+func (s *MatchingService) levenshteinSimilarity(s1, s2 string) float64 {
+    distance := s.levenshteinDistance(s1, s2)
+    maxLen := math.Max(float64(len(s1)), float64(len(s2)))
+    
+    if maxLen == 0 {
+        return 1.0
+    }
+    
+    return 1.0 - (float64(distance) / maxLen)
+}
+
+// Simplified Jaro-Winkler similarity
+func (s *MatchingService) jaroWinklerSimilarity(s1, s2 string) float64 {
+    if s1 == s2 {
+        return 1.0
+    }
+    
+    // Simplified implementation
+    commonChars := 0
+    for i := 0; i < len(s1) && i < len(s2); i++ {
+        if s1[i] == s2[i] {
+            commonChars++
+        }
+    }
+    
+    if commonChars == 0 {
         return 0.0
     }
     
-    return float64(commonWords) / math.Max(float64(len(words1)), float64(len(words2)))
+    maxLen := math.Max(float64(len(s1)), float64(len(s2)))
+    return float64(commonChars) / maxLen
 }
 
+// Enhanced distance calculation
 func (s *MatchingService) calculateDistance(from1, to1, from2, to2 string) float64 {
-    // This is a simplified distance calculation
-    // In a real application, you would use actual coordinates and proper distance calculation
-    
     fromDistance := s.stringDistance(from1, from2)
     toDistance := s.stringDistance(to1, to2)
     
-    return (fromDistance + toDistance) / 2.0
+    // Weight destination distance more heavily
+    return (fromDistance * 0.4) + (toDistance * 0.6)
 }
 
 func (s *MatchingService) stringDistance(s1, s2 string) float64 {
@@ -126,13 +225,13 @@ func (s *MatchingService) stringDistance(s1, s2 string) float64 {
         return 0.0
     }
     
-    // Simple Levenshtein distance approximation
     maxLen := math.Max(float64(len(s1)), float64(len(s2)))
     if maxLen == 0 {
         return 0.0
     }
     
-    return float64(s.levenshteinDistance(s1, s2)) / maxLen * 100
+    distance := float64(s.levenshteinDistance(s1, s2))
+    return (distance / maxLen) * 100
 }
 
 func (s *MatchingService) levenshteinDistance(s1, s2 string) int {
@@ -179,4 +278,18 @@ func min(a, b, c int) int {
         return b
     }
     return c
+}
+
+// Get top N matches
+func (s *MatchingService) GetTopMatches(userID int, from, to string, maxDistance float64, limit int) ([]models.TripMatch, error) {
+    allMatches, err := s.FindMatchingTrips(userID, from, to, maxDistance)
+    if err != nil {
+        return nil, err
+    }
+    
+    if len(allMatches) <= limit {
+        return allMatches, nil
+    }
+    
+    return allMatches[:limit], nil
 }

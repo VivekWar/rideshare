@@ -96,10 +96,10 @@ export default function TripDetailPage() {
               </div>
             </div>
             <div className="flex items-center text-gray-700">
-              <DollarSign className="h-5 w-5 mr-3" />
+              
               <div>
                 <p className="font-medium">Price per person</p>
-                <p className="text-sm">${trip.pricePerPerson}</p>
+                <p className="text-sm">₹{trip.pricePerPerson}</p>
               </div>
             </div>
           </div>
@@ -114,13 +114,14 @@ export default function TripDetailPage() {
 
         {trip.driver && (
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="font-medium text-gray-900 mb-3">Driver Information</h3>
+            <h3 className="font-medium text-gray-900 mb-3">Trip Initiator Information</h3>
             <div className="flex items-center">
               <div className="bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center">
                 <User className="h-5 w-5 text-gray-600" />
               </div>
               <div className="ml-3">
                 <p className="font-medium text-gray-900">{trip.driver.name}</p>
+                <p className="text-sm text-gray-600">{trip.driver.phone}</p>
                 <p className="text-sm text-gray-600">{trip.driver.email}</p>
               </div>
             </div>

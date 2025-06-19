@@ -15,6 +15,7 @@ export interface Trip {
   updatedAt: string
   driver?: User
   passengers?: User[]
+  userRole?: 'driver' | 'passenger' | 'none' 
 }
 
 export interface CreateTripData {

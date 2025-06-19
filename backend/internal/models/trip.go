@@ -21,6 +21,7 @@ type Trip struct {
     // Relationships
     Driver     *User  `json:"driver,omitempty"`
     Passengers []User `json:"passengers,omitempty"`
+    UserRole  string `json:"userRole,omitempty"`
 }
 
 type TripSearchCriteria struct {

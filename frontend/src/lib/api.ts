@@ -126,13 +126,41 @@ export const createTrip = async (tripData: CreateTripData): Promise<Trip> => {
 
 export const getTrips = async (): Promise<Trip[]> => {
   try {
+    console.log('🚀 Making API call to:', `${process.env.NEXT_PUBLIC_API_URL}/trips`);
+    console.log('🔑 Token present:', !!localStorage.getItem('token'));
+    
     const response: AxiosResponse<Trip[]> = await api.get('/trips');
+    console.log('✅ API Success:', response.data);
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.error || 'Failed to fetch trips');
+    console.error('❌ Full Error Object:', error);
+    console.error('❌ Error Response:', error.response);
+    console.error('❌ Error Status:', error.response?.status);
+    console.error('❌ Error Data:', error.response?.data);
+    console.error('❌ Error Message:', error.message);
+    
+    // More specific error handling
+    if (error.response) {
+      // Server responded with error status
+      throw new Error(error.response?.data?.error || `Server error: ${error.response.status}`);
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('No response from server. Check if backend is running.');
+    } else {
+      // Something else happened
+      throw new Error(`Request setup error: ${error.message}`);
+    }
   }
 };
 
+export const getUserTrips = async (): Promise<Trip[]> => {
+  try {
+    const response: AxiosResponse<Trip[]> = await api.get('/users/trips');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.error || 'Failed to fetch user trips');
+  }
+};
 export const getTrip = async (id: number): Promise<Trip> => {
   try {
     const response: AxiosResponse<Trip> = await api.get(`/trips/${id}`);

@@ -65,7 +65,7 @@ export default function Footer() {
         
         <div className="mt-8 border-t border-gray-200 pt-8">
           <p className="text-base text-gray-400 text-center">
-            &copy; 2024 RideShare. All rights reserved.
+            &copy; 2025 RideShare. All rights reserved.
           </p>
         </div>
       </div>
