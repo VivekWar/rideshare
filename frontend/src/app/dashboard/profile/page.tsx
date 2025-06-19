@@ -116,19 +116,7 @@ export default function ProfilePage() {
         </form>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Account Statistics</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600">0</p>
-            <p className="text-sm text-gray-600">Trips Created</p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-green-600">4.8</p>
-            <p className="text-sm text-gray-600">Rating</p>
-          </div>
-        </div>
-      </div>
+      
     </div>
   )
 }
